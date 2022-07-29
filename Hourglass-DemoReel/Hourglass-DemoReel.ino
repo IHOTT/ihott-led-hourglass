@@ -16,6 +16,7 @@ unsigned long FPS;
 bool transitioning = false;
 unsigned long transitionEndMillis;
 #define TRANSITION_LENGTH_MILLIS 1000;
+bool gReverseDirection = false;
 
 void setup() {
   Serial.begin(115200);
@@ -49,9 +50,8 @@ void setup() {
 
 // List of patterns to cycle through.  Each is defined as a separate function below.
 typedef void (*SimplePatternList[])();
-//SimplePatternList gPatterns = { pacifica }; // TODO: switch away from test pattern for prod
-//SimplePatternList gPatterns = { IHOTT, fluxCapacitor };
-SimplePatternList gPatterns = { IHOTT, fluxCapacitor, rainbowGlitter, confetti, sinelon, juggle, bpm , prideUp, prideDown , pacifica};
+//SimplePatternList gPatterns = { test }; // TODO: switch away from test pattern for prod
+SimplePatternList gPatterns = { IHOTT, fluxCapacitor, rainbowGlitter, confetti, sinelon, juggle, bpm , prideUp, prideDown , pacifica };
 
 uint8_t gCurrentPatternNumber = 0; // Index number of which pattern is current
 uint8_t gHue = 0; // rotating "base color" used by many of the patterns
@@ -84,6 +84,7 @@ void loop()
   EVERY_N_MILLISECONDS( 20 ) { gHue++; } // slowly cycle the "base color" through the rainbow
   EVERY_N_SECONDS( 1 ) { Serial.print("FPS: "); Serial.println(FPS); } // print FPS over serial
   EVERY_N_SECONDS( 60 ) { nextPattern(); } // change patterns periodically TODO: increase this for prod
+  EVERY_N_SECONDS( 342 ) { gReverseDirection = !gReverseDirection; }
 }
 
 #define ARRAY_SIZE(A) (sizeof(A) / sizeof((A)[0]))
@@ -115,8 +116,8 @@ uint16_t scaleRange( uint16_t value, uint16_t lowest, uint16_t highest ) {
 }
 
 void rainbowGlitter() {
-  addGlitter(120, CHSV(random8(), 255, 255));
-  addGlitter(60, CHSV(random8(), random8(), 255));
+  addGlitter(200, CHSV(random8(), 255, 255));
+  addGlitter(140, CHSV(random8(), random8(), 255));
   
   fadeToBlackBy( leds, NUM_LEDS, 4);
   meteorHoops(true);
@@ -131,7 +132,7 @@ void IHOTT() {
     uint16_t row = scaleRange(beat16(40+i), 0, (NUM_LEDS_PER_STRIP / 2) - 1);
     
     leds[(i*NUM_LEDS_PER_STRIP) + row] = CHSV(gHue+(row*3),255,255);
-    leds[(i*NUM_LEDS_PER_STRIP) + (NUM_LEDS_PER_STRIP - row)] = CHSV(gHue+(NUM_LEDS_PER_STRIP + (row*3)),255,255);
+    leds[(i*NUM_LEDS_PER_STRIP) + (NUM_LEDS_PER_STRIP - row)] = CHSV(gHue+( (row*3)),255,255);
   }
   
   centerWhiteGlitter();
@@ -254,7 +255,7 @@ void bpm()
 {
   // colored stripes pulsing at a defined Beats-Per-Minute (BPM)
   uint8_t BeatsPerMinute = 60;
-  CRGBPalette16 palette = PartyColors_p;
+  CRGBPalette16 palette = RainbowStripeColors_p;
   uint8_t beat = beatsin8( BeatsPerMinute, 64, 255);
   for( int i = 0; i < NUM_LEDS; i++) { //9948
     leds[i] = ColorFromPalette(palette, gHue+(i*2), beat-gHue+(i*10));
@@ -453,3 +454,42 @@ void pacifica_deepen_colors()
     leds[i] |= CRGB( 2, 5, 7);
   }
 }
+
+//#define COOLING  55
+//#define SPARKING 120
+//
+//void Fire2012()
+//{
+//// Array of temperature readings at each simulation cell
+//  static uint8_t heat[(NUM_LEDS_PER_STRIP / 2)];
+//
+//  // Step 1.  Cool down every cell a little
+//    for( int i = 0; i < (NUM_LEDS_PER_STRIP / 2); i++) {
+//      heat[i] = qsub8( heat[i],  random8(0, ((COOLING * 10) / (NUM_LEDS_PER_STRIP / 2)) + 2));
+//    }
+//  
+//    // Step 2.  Heat from each cell drifts 'up' and diffuses a little
+//    for( int k= (NUM_LEDS_PER_STRIP / 2) - 1; k >= 2; k--) {
+//      heat[k] = (heat[k - 1] + heat[k - 2] + heat[k - 2] ) / 3;
+//    }
+//    
+//    // Step 3.  Randomly ignite new 'sparks' of heat near the bottom
+//    if( random8() < SPARKING ) {
+//      int y = random8(7);
+//      heat[y] = qadd8( heat[y], random8(160,255) );
+//    }
+//
+//    // Step 4.  Map from heat cells to LED colors
+//    for(int i = 0; i < NUM_STRIPS; i++) {
+//      for( int j = 0; j < NUM_LEDS_PER_STRIP; j++) {
+//        CRGB color = HeatColor( heat[j]);
+//        int pixelnumber;
+//        if( gReverseDirection ) {
+//          pixelnumber = ((NUM_LEDS_PER_STRIP / 2)-1) - j;
+//        } else {
+//          pixelnumber = j;
+//        }
+//        leds[(i*NUM_LEDS_PER_STRIP) + pixelnumber] = color;
+//      }
+//    }
+//}
