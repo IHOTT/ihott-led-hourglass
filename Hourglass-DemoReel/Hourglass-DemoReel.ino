@@ -49,9 +49,9 @@ void setup() {
 
 // List of patterns to cycle through.  Each is defined as a separate function below.
 typedef void (*SimplePatternList[])();
-//SimplePatternList gPatterns = { test }; // TODO: switch away from test pattern for prod
-SimplePatternList gPatterns = { IHOTT, fluxCapacitor };
-//SimplePatternList gPatterns = { rainbow, rainbowWithGlitter, confetti, sinelon, juggle, bpm , prideUp, prideDown };
+SimplePatternList gPatterns = { juggle }; // TODO: switch away from test pattern for prod
+//SimplePatternList gPatterns = { IHOTT, fluxCapacitor };
+//SimplePatternList gPatterns = { IHOTT, fluxCapacitor, rainbowGlitter, confetti, sinelon, juggle, bpm , prideUp, prideDown };
 
 uint8_t gCurrentPatternNumber = 0; // Index number of which pattern is current
 uint8_t gHue = 0; // rotating "base color" used by many of the patterns
@@ -62,13 +62,13 @@ void loop()
 
   if (millis() > transitionEndMillis) transitioning = false;
   
-  if (!transitioning) {
-    // Call the current pattern function once, updating the 'leds' array
-    gPatterns[gCurrentPatternNumber]();
+  if (transitioning) {
+    fadeToBlackBy( leds, NUM_LEDS, 40);
+    FastLED.delay(25);
   }
   else {
-    fadeToBlackBy( leds, NUM_LEDS, 50);
-    FastLED.delay(25);
+    // Call the current pattern function once, updating the 'leds' array
+    gPatterns[gCurrentPatternNumber]();
   }
 
   // send the 'leds' array out to the actual LED strip
@@ -83,7 +83,7 @@ void loop()
   // do some periodic updates
   EVERY_N_MILLISECONDS( 20 ) { gHue++; } // slowly cycle the "base color" through the rainbow
   EVERY_N_SECONDS( 1 ) { Serial.print("FPS: "); Serial.println(FPS); } // print FPS over serial
-  EVERY_N_SECONDS( 10 ) { nextPattern(); } // change patterns periodically TODO: increase this for prod
+  EVERY_N_SECONDS( 100 ) { nextPattern(); } // change patterns periodically TODO: increase this for prod
 }
 
 #define ARRAY_SIZE(A) (sizeof(A) / sizeof((A)[0]))
@@ -91,19 +91,28 @@ void loop()
 void nextPattern()
 {
   // add one to the current pattern number, and wrap around at the end
-  gCurrentPatternNumber = (gCurrentPatternNumber + 1) % ARRAY_SIZE( gPatterns);
+//  gCurrentPatternNumber = (gCurrentPatternNumber + 1) % ARRAY_SIZE(gPatterns);
   
-  // TODO: add a fade or some other transition?
+  // randomize the next animation?
+  gCurrentPatternNumber = random8() % ARRAY_SIZE(gPatterns);
+  
+  // add a fade for transition
   transitioning = true;
   transitionEndMillis = millis() + TRANSITION_LENGTH_MILLIS;
-  
-  // TODO: randomize the next animation?
 }
 
 uint16_t scaleRange( uint16_t value, uint16_t lowest, uint16_t highest ) {
   uint16_t rangewidth = highest - lowest;
   uint16_t scaledbeat = scale16( value, rangewidth);
   return lowest + scaledbeat;
+}
+
+void rainbowGlitter() {
+  addGlitter(120, CHSV(random8(), 255, 255));
+  addGlitter(60, CHSV(random8(), random8(), 255));
+  
+  fadeToBlackBy( leds, NUM_LEDS, 4);
+  meteorHoops(false);
 }
 
 void IHOTT() {
@@ -118,11 +127,11 @@ void IHOTT() {
     leds[(i*NUM_LEDS_PER_STRIP) + (NUM_LEDS_PER_STRIP - row)] = CHSV(gHue+(NUM_LEDS_PER_STRIP + (row*3)),255,255);
   }
   
-  centerWhitePulse();
-  meteorHoops();
+  centerWhiteGlitter();
+  meteorHoops(false);
 }
 
-void centerWhitePulse() {
+void centerWhiteGlitter() {
 //  uint16_t brightness = beatsin16( (90 + beatsin16(4, 0, 30)), 64, 255 );
   uint16_t brightness = 255;
   for(int i = 0; i < NUM_STRIPS; i++) {
@@ -131,7 +140,17 @@ void centerWhitePulse() {
   }
 }
 
-void meteorHoops()  {
+void pulsedHoops(uint8_t hue, uint8_t sat)  {
+  uint8_t brightness = scaleRange(beatsin16(140), 128, 255);
+
+  for(int i = 0; i < NUM_STRIPS; i++) {
+  // top and bottom
+    leds[(i*NUM_LEDS_PER_STRIP)] = CHSV(hue, sat, brightness);
+    leds[(((NUM_STRIPS - 1) - i)*NUM_LEDS_PER_STRIP) + 31] = CHSV(hue, sat, brightness);
+  }
+}
+
+void meteorHoops(bool doubleMeteors)  {
   // set the hoops to black
 //  for(int i = 0; i < NUM_STRIPS; i++) {
 //    leds[(i*NUM_LEDS_PER_STRIP)] = CRGB(0,0,0);
@@ -139,13 +158,15 @@ void meteorHoops()  {
 //  }
   
   uint16_t column = scaleRange(beat16(60), 0, NUM_STRIPS - 1);
-//  uint16_t column2 = (column + ((NUM_STRIPS - 1) / 2)) % (NUM_STRIPS - 1);
+  uint16_t column2 = (column + ((NUM_STRIPS - 1) / 2)) % (NUM_STRIPS - 1);
   
   // top and bottom
     leds[(column*NUM_LEDS_PER_STRIP)] = CRGB(255,255,255);
-//    leds[(column2*NUM_LEDS_PER_STRIP)] = CRGB(255,255,255);
     leds[(((NUM_STRIPS - 1) - column)*NUM_LEDS_PER_STRIP) + 31] = CRGB(255,255,255);
-//    leds[(((NUM_STRIPS - 1) - column2)*NUM_LEDS_PER_STRIP) + 31] = CRGB(255,255,255);
+    if (doubleMeteors) {
+      leds[(column2*NUM_LEDS_PER_STRIP)] = CRGB(255,255,255);
+      leds[(((NUM_STRIPS - 1) - column2)*NUM_LEDS_PER_STRIP) + 31] = CRGB(255,255,255);
+    }
 }
 
 // some chasing spiraling sand particles
@@ -182,7 +203,14 @@ void rainbowWithGlitter()
   addGlitter(80);
 }
 
-void addGlitter( fract8 chanceOfGlitter) 
+void addGlitter(fract8 chanceOfGlitter, CHSV glitterColor) 
+{
+  if( random8() < chanceOfGlitter) {
+    leds[ random16(NUM_LEDS) ] += glitterColor;
+  }
+}
+
+void addGlitter(fract8 chanceOfGlitter) 
 {
   if( random8() < chanceOfGlitter) {
     leds[ random16(NUM_LEDS) ] += CRGB::White;
@@ -194,15 +222,25 @@ void confetti()
   // random colored speckles that blink in and fade smoothly
   fadeToBlackBy( leds, NUM_LEDS, 10);
   int pos = random16(NUM_LEDS);
-  leds[pos] += CHSV( gHue + random8(64), 200, 255);
+  leds[pos] += CHSV( gHue + random8(64), 255, 255);
+
+  pulsedHoops(gHue, scaleRange(beatsin16(60), 0, 255));
 }
 
 void sinelon()
 {
   // a colored dot sweeping back and forth, with fading trails
   fadeToBlackBy( leds, NUM_LEDS, 20);
-  int pos = beatsin16( 13, 0, NUM_LEDS-1 );
-  leds[pos] += CHSV( gHue, 255, 192);
+  gHue += 3;
+  
+  for(int i = 0; i < NUM_STRIPS; i++) {
+    int pos = beatsin16( 40, 0, NUM_LEDS_PER_STRIP-1 );
+    leds[(i*NUM_LEDS_PER_STRIP) + pos] = CHSV( gHue + (i*(255 / NUM_STRIPS)), 255, 255);
+    leds[(i*NUM_LEDS_PER_STRIP) + 31 - pos] = CHSV( gHue + (i*(255 / NUM_STRIPS)), 255, 255);
+  }
+
+  centerWhiteGlitter();
+  pulsedHoops(gHue, 0);
 }
 
 void bpm()
