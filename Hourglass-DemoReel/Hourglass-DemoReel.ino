@@ -13,6 +13,10 @@ unsigned long startMillis;
 unsigned long endMillis;
 unsigned long FPS;
 
+bool transitioning = false;
+unsigned long transitionEndMillis;
+#define TRANSITION_LENGTH_MILLIS 1000;
+
 void setup() {
   Serial.begin(115200);
   Serial.println("Setup start.");
@@ -55,8 +59,17 @@ uint8_t gHue = 0; // rotating "base color" used by many of the patterns
 void loop()
 {
   startMillis = millis();
-  // Call the current pattern function once, updating the 'leds' array
-  gPatterns[gCurrentPatternNumber]();
+
+  if (millis() > transitionEndMillis) transitioning = false;
+  
+  if (!transitioning) {
+    // Call the current pattern function once, updating the 'leds' array
+    gPatterns[gCurrentPatternNumber]();
+  }
+  else {
+    fadeToBlackBy( leds, NUM_LEDS, 50);
+    FastLED.delay(25);
+  }
 
   // send the 'leds' array out to the actual LED strip
   FastLED.show();  
@@ -79,7 +92,11 @@ void nextPattern()
 {
   // add one to the current pattern number, and wrap around at the end
   gCurrentPatternNumber = (gCurrentPatternNumber + 1) % ARRAY_SIZE( gPatterns);
+  
   // TODO: add a fade or some other transition?
+  transitioning = true;
+  transitionEndMillis = millis() + TRANSITION_LENGTH_MILLIS;
+  
   // TODO: randomize the next animation?
 }
 
