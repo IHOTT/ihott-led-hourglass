@@ -50,8 +50,8 @@ void setup() {
 
 // List of patterns to cycle through.  Each is defined as a separate function below.
 typedef void (*SimplePatternList[])();
-//SimplePatternList gPatterns = { test }; // TODO: switch away from test pattern for prod
-SimplePatternList gPatterns = { IHOTT, fluxCapacitor, rainbowGlitter, confetti, sinelon, juggle, bpm , prideUp, prideDown , pacifica };
+SimplePatternList gPatterns = { hourglass }; // TODO: switch away from test pattern for prod
+//SimplePatternList gPatterns = { IHOTT, IHOTT, IHOTT, fluxCapacitor, rainbowGlitter, confetti, sinelon, juggle, bpm , prideUp, prideDown , pacifica };
 
 uint8_t gCurrentPatternNumber = 0; // Index number of which pattern is current
 uint8_t gHue = 0; // rotating "base color" used by many of the patterns
@@ -63,8 +63,8 @@ void loop()
   if (millis() > transitionEndMillis) transitioning = false;
   
   if (transitioning) {
-    fadeToBlackBy( leds, NUM_LEDS, 40);
-    FastLED.delay(25);
+    fadeToBlackBy( leds, NUM_LEDS, 8);
+    FastLED.delay(5);
   }
   else {
     // Call the current pattern function once, updating the 'leds' array
@@ -83,7 +83,7 @@ void loop()
   // do some periodic updates
   EVERY_N_MILLISECONDS( 20 ) { gHue++; } // slowly cycle the "base color" through the rainbow
   EVERY_N_SECONDS( 1 ) { Serial.print("FPS: "); Serial.println(FPS); } // print FPS over serial
-  EVERY_N_SECONDS( 60 ) { nextPattern(); } // change patterns periodically TODO: increase this for prod
+  EVERY_N_SECONDS( 240 ) { nextPattern(); } // change patterns periodically TODO: increase this for prod
   EVERY_N_SECONDS( 342 ) { gReverseDirection = !gReverseDirection; }
 }
 
@@ -113,6 +113,68 @@ uint16_t scaleRange( uint16_t value, uint16_t lowest, uint16_t highest ) {
   uint16_t rangewidth = highest - lowest;
   uint16_t scaledbeat = scale16( value, rangewidth);
   return lowest + scaledbeat;
+}
+
+void hourglass() {
+  fadeToBlackBy( leds, NUM_LEDS, 10);
+  uint8_t sandBrightness = 96;
+  uint8_t sandSaturationMin = 200;
+  uint8_t chanceOfGlitter = 32;
+  uint8_t rainSpeed = 80;
+  
+  // value between 0-65535 that represents the overall animation timer
+  uint16_t hourglassTimer = beat16(1); // 1 BPM, 60 seconds for a full animation loop
+//  Serial.println(hourglassTimer);
+  uint16_t subTimer = hourglassTimer % 32768;
+  uint16_t emptyRows = subTimer / (32768/(NUM_LEDS_PER_STRIP/2));
+//  Serial.println(emptyRows);
+
+  if ( 0 < hourglassTimer && hourglassTimer < 32768){ // 0-32767: top draining, bottom accumulating
+    // top draining
+    for (int row = emptyRows; row < (NUM_LEDS_PER_STRIP/2); row++) {
+      uint16_t column = random16(0, NUM_STRIPS);
+      leds[ (column * NUM_LEDS_PER_STRIP ) +  row ] = CHSV(random8(),0,sandBrightness);
+      if( random8() < chanceOfGlitter) leds[ (column * NUM_LEDS_PER_STRIP ) +  row ] = CHSV(random8(),random8(sandSaturationMin,255),sandBrightness);
+    }
+
+    // bottom raining
+    uint16_t rainAcceleration = scaleRange(beat16(2), 0, rainSpeed);
+    uint16_t rainColumn = scaleRange(beat16(rainSpeed), 0, NUM_STRIPS - 1);
+    uint16_t rainRow = scaleRange(beat16(40), (NUM_LEDS_PER_STRIP/2), (NUM_LEDS_PER_STRIP - 1) - emptyRows);
+    leds[((NUM_LEDS_PER_STRIP * rainColumn) + rainRow)] += CHSV(gHue, random8(128,255), 255);
+    
+    // bottom accumulating
+    for (int row = (NUM_LEDS_PER_STRIP-1); row > (NUM_LEDS_PER_STRIP-1) - emptyRows; row--) {
+      uint16_t column = random16(0, NUM_STRIPS);
+      leds[ (column * NUM_LEDS_PER_STRIP ) +  row ] = CHSV(random8(),0,sandBrightness);
+      if( random8() < chanceOfGlitter) leds[ (column * NUM_LEDS_PER_STRIP ) +  row ] = CHSV(random8(),random8(sandSaturationMin,255),sandBrightness);
+    }
+  }
+  else { // 32768-65535: bottom draining, top accumulating
+    // bottom draining
+    for (int row = (NUM_LEDS_PER_STRIP - 1) - emptyRows; row >= NUM_LEDS_PER_STRIP/2; row--) {
+      uint16_t column = random16(0, NUM_STRIPS);
+      leds[ (column * NUM_LEDS_PER_STRIP ) +  row ] = CHSV(random8(),0,sandBrightness);
+      if( random8() < chanceOfGlitter) leds[ (column * NUM_LEDS_PER_STRIP ) +  row ] = CHSV(random8(),random8(sandSaturationMin,255),sandBrightness);
+    }
+
+    // top raining
+    uint16_t rainAcceleration = scaleRange(beat16(2), 0, rainSpeed);
+    uint16_t rainColumn = scaleRange(beat16(rainSpeed), 0, NUM_STRIPS - 1);
+    uint16_t rainRow = scaleRange(beat16(40), 0, ((NUM_LEDS_PER_STRIP/2) - 1) - emptyRows);
+    rainRow = ((NUM_LEDS_PER_STRIP / 2) - 1) - rainRow;
+    leds[((NUM_LEDS_PER_STRIP * rainColumn) + rainRow)] += CHSV(gHue, random8(128,255), 255);
+    
+    // top accumulating
+    for (int row = 0; row < emptyRows; row++) {
+      uint16_t column = random16(0, NUM_STRIPS);
+      leds[ (column * NUM_LEDS_PER_STRIP ) +  row ] = CHSV(random8(),0,sandBrightness);
+      if( random8() < chanceOfGlitter) leds[ (column * NUM_LEDS_PER_STRIP ) +  row ] = CHSV(random8(),random8(sandSaturationMin,255),sandBrightness);
+    }
+  }
+
+//  meteorHoops(true);
+  pulsedHoops(gHue, 255);
 }
 
 void rainbowGlitter() {
@@ -228,8 +290,10 @@ void addGlitter(fract8 chanceOfGlitter)
 void confetti() 
 {
   // random colored speckles that blink in and fade smoothly
-  fadeToBlackBy( leds, NUM_LEDS, 10);
+  fadeToBlackBy( leds, NUM_LEDS, 6);
   int pos = random16(NUM_LEDS);
+  leds[pos] += CHSV( gHue + random8(64), 255, 255);
+  pos = random16(NUM_LEDS);
   leds[pos] += CHSV( gHue + random8(64), 255, 255);
 
   pulsedHoops(gHue, scaleRange(beatsin16(60), 0, 255));
@@ -242,7 +306,7 @@ void sinelon()
   gHue += 3;
   
   for(int i = 0; i < NUM_STRIPS; i++) {
-    int pos = beatsin16( 40, 0, NUM_LEDS_PER_STRIP-1 );
+    int pos = beatsin16( 20+i, 0, NUM_LEDS_PER_STRIP-1 );
     leds[(i*NUM_LEDS_PER_STRIP) + pos] = CHSV( gHue + (i*(255 / NUM_STRIPS)), 255, 255);
     leds[(i*NUM_LEDS_PER_STRIP) + 31 - pos] = CHSV( gHue + (i*(255 / NUM_STRIPS)), 255, 255);
   }
