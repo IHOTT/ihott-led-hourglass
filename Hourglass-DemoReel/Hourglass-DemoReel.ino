@@ -8,6 +8,8 @@ FASTLED_USING_NAMESPACE
 #define BRIGHTNESS  255
 #define NUM_LEDS 576
 
+#define SHUFFLE_ANIMATIONS false // TODO: shuffle for prod
+
 CRGB leds[NUM_STRIPS * NUM_LEDS_PER_STRIP];
 unsigned long startMillis;
 unsigned long endMillis;
@@ -50,8 +52,8 @@ void setup() {
 
 // List of patterns to cycle through.  Each is defined as a separate function below.
 typedef void (*SimplePatternList[])();
-SimplePatternList gPatterns = { hourglass }; // TODO: switch away from test pattern for prod
-//SimplePatternList gPatterns = { IHOTT, IHOTT, IHOTT, fluxCapacitor, rainbowGlitter, confetti, sinelon, juggle, bpm , prideUp, prideDown , pacifica };
+//SimplePatternList gPatterns = { test }; // TODO: switch away from test pattern for prod
+SimplePatternList gPatterns = { IHOTT, breathingPrisim, fluxCapacitor, hourglass, rainbowGlitter, confetti, sinelon, juggle, bpm , prideUp, prideDown , pacifica };
 
 uint8_t gCurrentPatternNumber = 0; // Index number of which pattern is current
 uint8_t gHue = 0; // rotating "base color" used by many of the patterns
@@ -83,7 +85,7 @@ void loop()
   // do some periodic updates
   EVERY_N_MILLISECONDS( 20 ) { gHue++; } // slowly cycle the "base color" through the rainbow
   EVERY_N_SECONDS( 1 ) { Serial.print("FPS: "); Serial.println(FPS); } // print FPS over serial
-  EVERY_N_SECONDS( 240 ) { nextPattern(); } // change patterns periodically TODO: increase this for prod
+  EVERY_N_SECONDS( 15 ) { nextPattern(); } // change patterns periodically TODO: increase this for prod
   EVERY_N_SECONDS( 342 ) { gReverseDirection = !gReverseDirection; }
 }
 
@@ -91,17 +93,20 @@ void loop()
 
 void nextPattern()
 {
-  // add one to the current pattern number, and wrap around at the end
-//  gCurrentPatternNumber = (gCurrentPatternNumber + 1) % ARRAY_SIZE(gPatterns);
-  
   // randomize the next animation?
-  uint8_t oldPatternNumber = gCurrentPatternNumber;
-  gCurrentPatternNumber = random8() % ARRAY_SIZE(gPatterns);
+  if ( SHUFFLE_ANIMATIONS ) {
+    uint8_t oldPatternNumber = gCurrentPatternNumber;
+    gCurrentPatternNumber = random8() % ARRAY_SIZE(gPatterns);
   
-  if (ARRAY_SIZE(gPatterns) > 1) {
-    while (gCurrentPatternNumber == oldPatternNumber){
-      gCurrentPatternNumber = random8() % ARRAY_SIZE(gPatterns);
+    if (ARRAY_SIZE(gPatterns) > 1) {
+      while (gCurrentPatternNumber == oldPatternNumber){
+        gCurrentPatternNumber = random8() % ARRAY_SIZE(gPatterns);
+      }
     }
+  }
+  else {
+    // add one to the current pattern number, and wrap around at the end
+    gCurrentPatternNumber = (gCurrentPatternNumber + 1) % ARRAY_SIZE(gPatterns);
   }
   
   // add a fade for transition
@@ -113,6 +118,38 @@ uint16_t scaleRange( uint16_t value, uint16_t lowest, uint16_t highest ) {
   uint16_t rangewidth = highest - lowest;
   uint16_t scaledbeat = scale16( value, rangewidth);
   return lowest + scaledbeat;
+}
+
+uint8_t prisimHue = 0;
+
+void breathingPrisim() {
+  prisimHue += 4;
+  fadeToBlackBy( leds, NUM_LEDS, 30);
+
+  uint16_t topPadding = scaleRange(beatsin16(50), 0, 6);
+  uint16_t botPadding = scaleRange(beatsin16(72), NUM_LEDS_PER_STRIP - 7, NUM_LEDS_PER_STRIP - 1);
+  
+  for (int i=0; i < NUM_STRIPS; i++){
+    leds[((NUM_LEDS_PER_STRIP * i) + topPadding)] = CRGB(255, 255, 255);
+    leds[((NUM_LEDS_PER_STRIP * i) + botPadding)] = CHSV(gHue + (i * (255/NUM_STRIPS)), 255, 255);
+  }
+
+  // prisim effect particles
+  uint8_t numParticles = 2;
+  for (int i=0; i < numParticles; i++){
+    uint16_t prisimColumn = scaleRange(beat16(120), 0, NUM_STRIPS - 1);
+    uint16_t prisimRow = scaleRange(beat16(25), topPadding, NUM_LEDS_PER_STRIP - 1);
+    prisimRow = ( prisimRow + (i * ( NUM_LEDS_PER_STRIP / numParticles))) % NUM_LEDS_PER_STRIP;
+    
+    if ( prisimRow < (NUM_LEDS_PER_STRIP / 2)) { // white sand top
+      leds[((NUM_LEDS_PER_STRIP * prisimColumn) + prisimRow)] = CRGB(255, 255, 255);
+    }
+    else { // rainbow prisim bottom
+      leds[((NUM_LEDS_PER_STRIP * prisimColumn) + prisimRow)] = CHSV(prisimHue, 255, 255);
+    }
+  }
+
+  centerWhiteGlitter();
 }
 
 void hourglass() {
@@ -240,7 +277,6 @@ void meteorHoops(bool doubleMeteors)  {
 }
 
 // some chasing spiraling sand particles
-// TODO: stall and reverse flow?
 void fluxCapacitor() {
   gHue +=3;
   fadeToBlackBy( leds, NUM_LEDS, 20); // TODO: replace with a blend?
