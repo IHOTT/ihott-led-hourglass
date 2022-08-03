@@ -127,10 +127,10 @@ void breathingPrisim() {
   fadeToBlackBy( leds, NUM_LEDS, 30);
 
   uint16_t topPadding = scaleRange(beatsin16(50), 0, 6);
-  uint16_t botPadding = scaleRange(beatsin16(72), NUM_LEDS_PER_STRIP - 7, NUM_LEDS_PER_STRIP - 1);
+  uint16_t botPadding = scaleRange(beatsin16(52), NUM_LEDS_PER_STRIP - 7, NUM_LEDS_PER_STRIP - 1);
   
   for (int i=0; i < NUM_STRIPS; i++){
-    leds[((NUM_LEDS_PER_STRIP * i) + topPadding)] = CRGB(255, 255, 255);
+    leds[((NUM_LEDS_PER_STRIP * i) + topPadding)] = CHSV(60, 80, 255);
     leds[((NUM_LEDS_PER_STRIP * i) + botPadding)] = CHSV(gHue + (i * (255/NUM_STRIPS)), 255, 255);
   }
 
@@ -145,7 +145,7 @@ void breathingPrisim() {
       leds[((NUM_LEDS_PER_STRIP * prisimColumn) + prisimRow)] = CRGB(255, 255, 255);
     }
     else { // rainbow prisim bottom
-      leds[((NUM_LEDS_PER_STRIP * prisimColumn) + prisimRow)] = CHSV(prisimHue, 255, 255);
+      if (prisimRow <= botPadding) leds[((NUM_LEDS_PER_STRIP * prisimColumn) + prisimRow)] = CHSV(prisimHue, 255, 255);
     }
   }
 
