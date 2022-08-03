@@ -85,7 +85,7 @@ void loop()
   // do some periodic updates
   EVERY_N_MILLISECONDS( 20 ) { gHue++; } // slowly cycle the "base color" through the rainbow
   EVERY_N_SECONDS( 1 ) { Serial.print("FPS: "); Serial.println(FPS); } // print FPS over serial
-  EVERY_N_SECONDS( 15 ) { nextPattern(); } // change patterns periodically TODO: increase this for prod
+  EVERY_N_SECONDS( 300 ) { nextPattern(); } // change patterns periodically TODO: increase this for prod
   EVERY_N_SECONDS( 342 ) { gReverseDirection = !gReverseDirection; }
 }
 
@@ -153,6 +153,7 @@ void breathingPrisim() {
 }
 
 void hourglass() {
+  gHue += 4;
   fadeToBlackBy( leds, NUM_LEDS, 10);
   uint8_t sandBrightness = 96;
   uint8_t sandSaturationMin = 200;
@@ -161,29 +162,27 @@ void hourglass() {
   
   // value between 0-65535 that represents the overall animation timer
   uint16_t hourglassTimer = beat16(1); // 1 BPM, 60 seconds for a full animation loop
-//  Serial.println(hourglassTimer);
   uint16_t subTimer = hourglassTimer % 32768;
   uint16_t emptyRows = subTimer / (32768/(NUM_LEDS_PER_STRIP/2));
-//  Serial.println(emptyRows);
 
   if ( 0 < hourglassTimer && hourglassTimer < 32768){ // 0-32767: top draining, bottom accumulating
     // top draining
     for (int row = emptyRows; row < (NUM_LEDS_PER_STRIP/2); row++) {
       uint16_t column = random16(0, NUM_STRIPS);
-      leds[ (column * NUM_LEDS_PER_STRIP ) +  row ] = CHSV(random8(),0,sandBrightness);
-      if( random8() < chanceOfGlitter) leds[ (column * NUM_LEDS_PER_STRIP ) +  row ] = CHSV(random8(),random8(sandSaturationMin,255),sandBrightness);
+      leds[ (column * NUM_LEDS_PER_STRIP ) +  row ] += CHSV(60,80,sandBrightness);
+//      if( random8() < chanceOfGlitter) leds[ (column * NUM_LEDS_PER_STRIP ) +  row ] = CHSV(66,128,sandBrightness);
     }
 
     // bottom raining
     uint16_t rainAcceleration = scaleRange(beat16(2), 0, rainSpeed);
     uint16_t rainColumn = scaleRange(beat16(rainSpeed), 0, NUM_STRIPS - 1);
     uint16_t rainRow = scaleRange(beat16(40), (NUM_LEDS_PER_STRIP/2), (NUM_LEDS_PER_STRIP - 1) - emptyRows);
-    leds[((NUM_LEDS_PER_STRIP * rainColumn) + rainRow)] += CHSV(gHue, random8(128,255), 255);
+    leds[((NUM_LEDS_PER_STRIP * rainColumn) + rainRow)] = CHSV(gHue, random8(128,255), 255);
     
     // bottom accumulating
     for (int row = (NUM_LEDS_PER_STRIP-1); row > (NUM_LEDS_PER_STRIP-1) - emptyRows; row--) {
       uint16_t column = random16(0, NUM_STRIPS);
-      leds[ (column * NUM_LEDS_PER_STRIP ) +  row ] = CHSV(random8(),0,sandBrightness);
+      leds[ (column * NUM_LEDS_PER_STRIP ) +  row ] += CHSV(60,80,sandBrightness);
       if( random8() < chanceOfGlitter) leds[ (column * NUM_LEDS_PER_STRIP ) +  row ] = CHSV(random8(),random8(sandSaturationMin,255),sandBrightness);
     }
   }
@@ -191,8 +190,8 @@ void hourglass() {
     // bottom draining
     for (int row = (NUM_LEDS_PER_STRIP - 1) - emptyRows; row >= NUM_LEDS_PER_STRIP/2; row--) {
       uint16_t column = random16(0, NUM_STRIPS);
-      leds[ (column * NUM_LEDS_PER_STRIP ) +  row ] = CHSV(random8(),0,sandBrightness);
-      if( random8() < chanceOfGlitter) leds[ (column * NUM_LEDS_PER_STRIP ) +  row ] = CHSV(random8(),random8(sandSaturationMin,255),sandBrightness);
+      leds[ (column * NUM_LEDS_PER_STRIP ) +  row ] += CHSV(60,80,sandBrightness);
+//      if( random8() < chanceOfGlitter) leds[ (column * NUM_LEDS_PER_STRIP ) +  row ] = CHSV(random8(),random8(sandSaturationMin,255),sandBrightness);
     }
 
     // top raining
@@ -200,18 +199,18 @@ void hourglass() {
     uint16_t rainColumn = scaleRange(beat16(rainSpeed), 0, NUM_STRIPS - 1);
     uint16_t rainRow = scaleRange(beat16(40), 0, ((NUM_LEDS_PER_STRIP/2) - 1) - emptyRows);
     rainRow = ((NUM_LEDS_PER_STRIP / 2) - 1) - rainRow;
-    leds[((NUM_LEDS_PER_STRIP * rainColumn) + rainRow)] += CHSV(gHue, random8(128,255), 255);
+    leds[((NUM_LEDS_PER_STRIP * rainColumn) + rainRow)] = CHSV(gHue, random8(128,255), 255);
     
     // top accumulating
     for (int row = 0; row < emptyRows; row++) {
       uint16_t column = random16(0, NUM_STRIPS);
-      leds[ (column * NUM_LEDS_PER_STRIP ) +  row ] = CHSV(random8(),0,sandBrightness);
+      leds[ (column * NUM_LEDS_PER_STRIP ) +  row ] += CHSV(60,80,sandBrightness);
       if( random8() < chanceOfGlitter) leds[ (column * NUM_LEDS_PER_STRIP ) +  row ] = CHSV(random8(),random8(sandSaturationMin,255),sandBrightness);
     }
   }
 
 //  meteorHoops(true);
-  pulsedHoops(gHue, 255);
+  pulsedHoops(beat8(10), 255);
 }
 
 void rainbowGlitter() {
