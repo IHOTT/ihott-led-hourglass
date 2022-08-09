@@ -8,7 +8,7 @@ FASTLED_USING_NAMESPACE
 #define BRIGHTNESS  255
 #define NUM_LEDS 576
 
-#define SHUFFLE_ANIMATIONS false // TODO: shuffle for prod
+#define SHUFFLE_ANIMATIONS true // TODO: shuffle for prod
 
 CRGB leds[NUM_STRIPS * NUM_LEDS_PER_STRIP];
 unsigned long startMillis;
@@ -530,7 +530,7 @@ void pacifica_one_layer( CRGBPalette16& p, uint16_t cistart, uint16_t wavescale,
 void pacifica_add_whitecaps()
 {
   uint8_t basethreshold = beatsin8( 9, 55, 65);
-  uint8_t wave = beat8( 7 );
+  uint8_t wave = beat8( 120 );
   
   for( uint16_t i = 0; i < NUM_LEDS; i++) {
     uint8_t threshold = scale8( sin8( wave), 20) + basethreshold;
